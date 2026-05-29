@@ -1,11 +1,21 @@
 # act-node-docker
-# GitHub Actions compatible runner image with Node.js and Docker CLI
+# GitHub/Gitea Actions compatible runner image with Node.js and infra CLIs
 # Based on catthehacker/ubuntu:act-latest
 
 FROM catthehacker/ubuntu:act-latest
 
+ARG TARGETARCH
+ARG KUBECTL_VERSION=v1.36.1
+ARG KUSTOMIZE_VERSION=5.8.1
+ARG ATMOS_VERSION=1.219.0
+ARG OPENTOFU_VERSION=1.11.6
+ARG INFISICAL_VERSION=0.43.58
+
+ENV ATMOS_TELEMETRY_ENABLED=false \
+    ATMOS_VERSION_CHECK_ENABLED=false
+
 LABEL org.opencontainers.image.source="https://github.com/noeljackson/act-node-docker"
-LABEL org.opencontainers.image.description="GitHub Actions runner image with Node.js, Docker CLI, and kubectl for Gitea Actions"
+LABEL org.opencontainers.image.description="Actions runner image with Node.js, Docker CLI, Kubernetes, Atmos, OpenTofu, and Infisical CLIs"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # Install Docker CLI (not daemon - we connect to external Docker via socket)
@@ -13,6 +23,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
+    jq \
+    tar \
+    unzip \
     && install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
     && chmod a+r /etc/apt/keyrings/docker.gpg \
@@ -25,12 +38,65 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install kubectl for Kubernetes deployments
-RUN curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/$(dpkg --print-architecture)/kubectl" -o /usr/local/bin/kubectl \
+RUN set -eux; \
+    arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
+    case "$arch" in \
+      amd64|arm64) ;; \
+      *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${arch}/kubectl" -o /usr/local/bin/kubectl \
     && chmod +x /usr/local/bin/kubectl
 
 # Install kustomize for Kubernetes manifests
-RUN curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash \
-    && mv kustomize /usr/local/bin/
+RUN set -eux; \
+    arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
+    case "$arch" in \
+      amd64|arm64) ;; \
+      *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_${arch}.tar.gz" -o /tmp/kustomize.tar.gz; \
+    tar -xzf /tmp/kustomize.tar.gz -C /usr/local/bin kustomize; \
+    rm -f /tmp/kustomize.tar.gz
+
+# Install Atmos for stack and workflow orchestration
+RUN set -eux; \
+    arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
+    case "$arch" in \
+      amd64|arm64) ;; \
+      *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/cloudposse/atmos/releases/download/v${ATMOS_VERSION}/atmos_${ATMOS_VERSION}_linux_${arch}" -o /usr/local/bin/atmos; \
+    chmod +x /usr/local/bin/atmos
+
+# Install OpenTofu for Terraform-compatible infrastructure plans/applies
+RUN set -eux; \
+    arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
+    case "$arch" in \
+      amd64|arm64) ;; \
+      *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/opentofu/opentofu/releases/download/v${OPENTOFU_VERSION}/tofu_${OPENTOFU_VERSION}_${arch}.deb" -o /tmp/tofu.deb; \
+    dpkg -i /tmp/tofu.deb; \
+    rm -f /tmp/tofu.deb
+
+# Install Infisical CLI for OIDC-backed secret injection
+RUN set -eux; \
+    arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
+    case "$arch" in \
+      amd64|arm64) ;; \
+      *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/Infisical/cli/releases/download/v${INFISICAL_VERSION}/infisical_${INFISICAL_VERSION}_linux_${arch}.deb" -o /tmp/infisical.deb; \
+    dpkg -i /tmp/infisical.deb; \
+    rm -f /tmp/infisical.deb
 
 # Verify installations
-RUN node --version && npm --version && docker --version && kubectl version --client && kustomize version
+RUN node --version \
+    && npm --version \
+    && docker --version \
+    && kubectl version --client \
+    && kustomize version \
+    && atmos version \
+    && tofu version \
+    && infisical --version \
+    && jq --version

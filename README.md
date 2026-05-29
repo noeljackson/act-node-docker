@@ -1,12 +1,16 @@
 # act-node-docker
 
-GitHub Actions compatible runner image with Node.js and Docker CLI for use with Gitea Actions (act-runner).
+GitHub/Gitea Actions compatible runner image with Node.js, Docker CLI,
+Kubernetes tools, and infrastructure CLIs for use with Gitea Actions
+(act-runner).
 
 ## Features
 
 - Based on `catthehacker/ubuntu:act-latest` (GitHub Actions compatible)
 - Node.js pre-installed (for GitHub Actions that require it)
 - Docker CLI with Buildx and Compose plugins
+- Kubernetes tooling with `kubectl` and `kustomize`
+- Infrastructure tooling with `atmos`, `tofu`, `infisical`, and `jq`
 - Compatible with act-runner's Docker-in-Docker setup
 
 ## Usage
@@ -52,6 +56,12 @@ docker build -t act-node-docker:latest .
 | Docker CLI | Latest stable | Client only, connects to external daemon |
 | Docker Buildx | Latest stable | Multi-platform builds |
 | Docker Compose | Latest stable | v2 plugin |
+| kubectl | 1.36.1 | Kubernetes client |
+| kustomize | 5.8.1 | Kubernetes manifest customization |
+| atmos | 1.219.0 | Stack and workflow orchestration |
+| OpenTofu | 1.11.6 | Terraform-compatible IaC |
+| Infisical CLI | 0.43.58 | Secret injection |
+| jq | OS package | JSON processing |
 
 ## License
 
