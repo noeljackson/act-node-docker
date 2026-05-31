@@ -2,12 +2,44 @@
 # GitHub/Gitea Actions compatible runner image with Node.js and infra CLIs
 # Based on catthehacker/ubuntu:act-latest
 
+FROM --platform=$BUILDPLATFORM golang:1.26.2-bookworm AS atmos-builder
+
+ARG TARGETARCH
+ARG ATMOS_REPO=https://github.com/noeljackson/atmos.git
+ARG ATMOS_REF=d64609ef85bd9f5a4892e88f86dec16c23e4cb58
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates git; \
+    rm -rf /var/lib/apt/lists/*; \
+    git init /src/atmos; \
+    cd /src/atmos; \
+    git remote add origin "$ATMOS_REPO"; \
+    git fetch --depth 1 origin "$ATMOS_REF"; \
+    git checkout --detach FETCH_HEAD
+
+WORKDIR /src/atmos
+
+RUN set -eux; \
+    arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
+    case "$arch" in \
+      amd64|arm64) ;; \
+      *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac; \
+    CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build \
+      -trimpath \
+      -ldflags "-s -w -X 'github.com/cloudposse/atmos/pkg/version.Version=${ATMOS_REF}'" \
+      -o /out/atmos
+
+# act-node-docker
+# GitHub/Gitea Actions compatible runner image with Node.js and infra CLIs
+# Based on catthehacker/ubuntu:act-latest
+
 FROM catthehacker/ubuntu:act-latest
 
 ARG TARGETARCH
 ARG KUBECTL_VERSION=v1.36.1
 ARG KUSTOMIZE_VERSION=5.8.1
-ARG ATMOS_VERSION=1.219.0
 ARG OPENTOFU_VERSION=1.11.6
 ARG INFISICAL_VERSION=0.43.58
 
@@ -58,15 +90,8 @@ RUN set -eux; \
     tar -xzf /tmp/kustomize.tar.gz -C /usr/local/bin kustomize; \
     rm -f /tmp/kustomize.tar.gz
 
-# Install Atmos for stack and workflow orchestration
-RUN set -eux; \
-    arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
-    case "$arch" in \
-      amd64|arm64) ;; \
-      *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
-    esac; \
-    curl -fsSL "https://github.com/cloudposse/atmos/releases/download/v${ATMOS_VERSION}/atmos_${ATMOS_VERSION}_linux_${arch}" -o /usr/local/bin/atmos; \
-    chmod +x /usr/local/bin/atmos
+# Install Atmos for stack and workflow orchestration.
+COPY --from=atmos-builder /out/atmos /usr/local/bin/atmos
 
 # Install OpenTofu for Terraform-compatible infrastructure plans/applies
 RUN set -eux; \
