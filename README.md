@@ -58,7 +58,7 @@ docker build -t act-node-docker:latest .
 | Docker Compose | Latest stable | v2 plugin |
 | kubectl | 1.36.1 | Kubernetes client |
 | kustomize | 5.8.1 | Kubernetes manifest customization |
-| atmos | 1.219.0 | Stack and workflow orchestration |
+| atmos | noeljackson/atmos d64609ef8 | Stack and workflow orchestration with Hetzner auth support |
 | OpenTofu | 1.11.6 | Terraform-compatible IaC |
 | Infisical CLI | 0.43.58 | Secret injection |
 | jq | OS package | JSON processing |
