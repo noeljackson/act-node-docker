@@ -10,7 +10,7 @@ Kubernetes tools, and infrastructure CLIs for use with Gitea Actions
 - Node.js pre-installed (for GitHub Actions that require it)
 - Docker CLI with Buildx and Compose plugins
 - Kubernetes tooling with `kubectl` and `kustomize`
-- Infrastructure tooling with `atmos`, `tofu`, `infisical`, and `jq`
+- Infrastructure tooling with `atmos`, `tofu`, `infisical`, `jq`, and `ripgrep`
 - Compatible with act-runner's Docker-in-Docker setup
 
 ## Usage
@@ -62,6 +62,7 @@ docker build -t act-node-docker:latest .
 | OpenTofu | 1.11.6 | Terraform-compatible IaC |
 | Infisical CLI | 0.43.58 | Secret injection |
 | jq | OS package | JSON processing |
+| ripgrep | OS package | Fast repository search |
 
 ## License
 

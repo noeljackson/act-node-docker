@@ -56,6 +56,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gnupg \
     jq \
+    ripgrep \
     tar \
     unzip \
     && install -m 0755 -d /etc/apt/keyrings \
@@ -124,4 +125,5 @@ RUN node --version \
     && atmos version \
     && tofu version \
     && infisical --version \
-    && jq --version
+    && jq --version \
+    && rg --version
